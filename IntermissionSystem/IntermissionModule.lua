@@ -7,7 +7,7 @@ local IntermissionEndedEvent = ReplicatedStorage:WaitForChild("Bindables"):WaitF
 local MapFolder = ReplicatedStorage:WaitForChild("MapFolder")
 
 local CountdownTime = 5
-local MinimumPlayers = 0
+local MinimumPlayers = 1
 local isCountingdown = false
 local NewMap = nil
 
