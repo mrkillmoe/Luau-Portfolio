@@ -5,7 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AKEvent = ReplicatedStorage.Events:FindFirstChild("AKEvent")
 local ShootEvent = ReplicatedStorage.Events:WaitForChild("ShootEvent")
 
---H&K USP COMPACT
 local Tool = script.Parent
 local Player = game.Players.LocalPlayer
 local Mouse = Player:GetMouse()
@@ -42,7 +41,7 @@ local function Shoot()
 		end
 		Debounce = true
 		print(Debounce)
-		-- Decrease Magazine and update UI
+		
 		Magazine = Magazine - 1
 		NewAKAmmo.BulletCount.Text = (Magazine .. "/30")		
 
@@ -50,7 +49,7 @@ local function Shoot()
 		print(ShootEvent)
 		ShootEvent:FireServer(WeaponType)
 
-		-- Perform the raycast for hitscan
+		
 		local RayOrigin = Tool.Handle.Position
 		local RayDirection = (Mouse.Hit.Position - RayOrigin).unit * 100
 
