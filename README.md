@@ -11,13 +11,13 @@ A room-based procedural generation system with door alignment, random exits, and
 [Intermission System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Intermission%20System)
 Handles intermissions between waves, with reusable UI logic and player tracking.
 
-##[Stand System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Stand%20System)
+[Stand System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Stand%20System)
 A JoJo-style stand system with cooldowns, summoning/unsummoning animations, and modular management.
 
 [Wave Zombie Spawner](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Wave%20System)
 Spawns zombies in random zones based on waves. Includes XP-on-kill logic.
 
-#AR System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AR%20System)
+.[AR System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AR%20System)
 A working automatic assault rifle with ammo UI and shooting sounds.
 
 [Revive System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Revive%20System)
