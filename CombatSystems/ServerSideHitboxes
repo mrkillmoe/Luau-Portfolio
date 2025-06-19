@@ -1,0 +1,171 @@
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+local Bindables = ReplicatedStorage:WaitForChild("Bindables")
+local AnimationsFolder = ReplicatedStorage:WaitForChild("Animations")
+
+local DamageEvent = RemoteEvents:FindFirstChild("DamageEvent")
+local HitBoxEvent = Bindables:WaitForChild("HitBoxEvent")
+local BlockEvent = RemoteEvents:WaitForChild("BlockEvent")
+local ComboAttackEvent = RemoteEvents:WaitForChild("ComboAttackEvent")
+
+local MAX_HITBOXES = 10
+local hitboxDebounce = false
+
+local comboDamageMap = {
+	[1] = 12,
+	[2] = 16,
+	[3] = 30,
+}
+
+local lastBlockInput = {}
+local isBlocking = {}
+local activeHitboxTargets = {}
+local activeBlockTracks = {} -- Used to stop block animation later
+
+--// Animation Utility
+local function playAnimation(humanoid: Humanoid, animationObj: Animation)
+	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+	local track = animator:LoadAnimation(animationObj)
+	track:Play()
+	return track
+end
+
+--// Combo Animation
+local function playComboAnimation(player, combo)
+	local character = player.Character
+	if not character then return end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local animObj = AnimationsFolder:FindFirstChild("M1_" .. tostring(combo))
+	if animObj then
+		playAnimation(humanoid, animObj)
+	end
+end
+
+--// Knockback Effect
+local function applyKnockback(victimHumanoid: Humanoid, attackerHRP: BasePart)
+	local victimHRP = victimHumanoid.Parent and victimHumanoid.Parent:FindFirstChild("HumanoidRootPart")
+	if not victimHRP or not attackerHRP then return end
+
+	local direction = (victimHRP.Position - attackerHRP.Position).Unit
+	local knockbackPower = 100
+	victimHRP.AssemblyLinearVelocity = direction * knockbackPower + Vector3.new(0, 100, 0)
+end
+
+--// Damage Logic
+local function applyDamage(humanoid: Humanoid, attackerHRP: BasePart, baseDamage: number)
+	local victimPlayer = Players:GetPlayerFromCharacter(humanoid.Parent)
+
+	if victimPlayer and isBlocking[victimPlayer.UserId] then
+		humanoid:TakeDamage(baseDamage * 0.75) -- Block reduces damage by 25%
+	else
+		humanoid:TakeDamage(baseDamage)
+	end
+end
+
+--// Hitbox Creation
+local function createHitbox(player, comboIndex, maxCombo, attackerHRP)
+	if not attackerHRP or hitboxDebounce then return end
+	local character = player.Character
+	if not character then return end
+
+	local hitbox = Instance.new("Part")
+	hitbox.Name = "HitBox"
+	hitbox.Size = Vector3.new(6, 5, 5)
+	hitbox.Transparency = 0.6
+	hitbox.Anchored = true
+	hitbox.CanCollide = false
+	hitbox.CanTouch = false
+	hitbox.CanQuery = false
+	hitbox.Color = Color3.new(1, 0, 0)
+	hitbox.Parent = workspace:FindFirstChild("HitBoxes")
+
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterDescendantsInstances = {character}
+	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local lifetime = 0.3
+	local elapsed = 0
+
+	playComboAnimation(player, comboIndex)
+
+	local connection
+	connection = RunService.Heartbeat:Connect(function(dt)
+		elapsed += dt
+		if elapsed > lifetime then
+			connection:Disconnect()
+			hitbox:Destroy()
+			hitboxDebounce = true
+			table.clear(activeHitboxTargets)
+			return
+		end
+
+		hitbox.CFrame = attackerHRP.CFrame * CFrame.new(0, 0, -3)
+
+		local parts = workspace:GetPartsInPart(hitbox, overlapParams)
+		for _, part in ipairs(parts) do
+			local humanoid = part.Parent:FindFirstChild("Humanoid")
+			local VictimHRP = part.Parent:FindFirstChild("HumanoidRootPart")
+			if not VictimHRP then return end
+			if humanoid and humanoid ~= character:FindFirstChild("Humanoid") and not activeHitboxTargets[humanoid] then
+				activeHitboxTargets[humanoid] = true
+				hitbox.Color = Color3.new(0, 1, 0)
+				local damage = comboDamageMap[comboIndex] or 10
+				if comboDamageMap[comboIndex] == comboDamageMap[3] then
+					applyKnockback(humanoid, attackerHRP)
+				end
+				DamageEvent:FireClient(player, damage, VictimHRP.Position + Vector3.new(0, 3, 0))
+				applyDamage(humanoid, attackerHRP, damage)
+			end
+		end
+	end)
+end
+
+--// Block Input Handler
+BlockEvent.OnServerEvent:Connect(function(player: Player, isHoldingBlock: boolean)
+	local now = tick()
+	local lastPress = lastBlockInput[player.UserId] or 0
+	if now - lastPress < 0.2 then return end
+	lastBlockInput[player.UserId] = now
+
+	isBlocking[player.UserId] = isHoldingBlock
+
+	local char = player.Character
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local blockAnim = AnimationsFolder:FindFirstChild("Block")
+	if not blockAnim then return end
+
+	-- Stop previous block animation
+	if activeBlockTracks[player.UserId] then
+		activeBlockTracks[player.UserId]:Stop()
+		
+		activeBlockTracks[player.UserId] = nil
+		isBlocking[player.UserId] = nil
+		print(activeBlockTracks)
+		return
+	end
+
+	if isHoldingBlock then
+		local track = playAnimation(humanoid, blockAnim)
+		activeBlockTracks[player.UserId] = track
+		print(activeBlockTracks)
+	end
+end)
+
+--// Combo Attack Handler
+ComboAttackEvent.OnServerEvent:Connect(function(player: Player, combo: number, maxCombo: number, hrp: BasePart)
+	if combo > maxCombo then return end
+	if isBlocking[player.UserId] then return end
+
+	hitboxDebounce = false
+	createHitbox(player, combo, maxCombo, hrp)
+end)
