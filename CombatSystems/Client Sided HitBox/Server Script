@@ -30,7 +30,7 @@ DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
 	
 	print(Weapon)
 	
-	if ClientCooldown ~= CoolDownModule:CoolDownCheck(plr, Weapon.Name) then 
+	if ClientCooldown ~= CoolDownModule:CoolDownCheck(plr, Weapon) then 
 		warn("Diffrent Cooldowns. Possible Exploiter")
 		return
 	end
@@ -46,12 +46,10 @@ DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
 	
 	local HitBoxes = CoolDownModule:HitBoxCheck(plr, Weapon)
 	
-	if ClientHitBoxType ~= HitBoxes or ClientHitBoxType ~= HitBoxes[ClientHitBoxType] then
-		warn("HitBoxes Dont Match")
+	if not HitBoxTemplateModule:IsCompatible(Weapon, ClientHitBoxType) then
+		warn("HitBox not compatible with this weapon")
 		return
 	end
-	
-	
 	
 	local ServerRoot = plr.Character:FindFirstChild("HumanoidRootPart")
 	local plrDistance = (clientHRP.Position - ServerRoot.Position).Magnitude
@@ -85,7 +83,7 @@ DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
 	
 	if VictimHum and VictimHum.Health > 0 then
 		VictimHum:TakeDamage(Damage[Weapon])
-		DamageEvent:FireClient(plr, Damage)
+		DamageEvent:FireClient(plr, Damage[Weapon], VictimHRP.Position)
 	end
 	
 	print(Damage)
