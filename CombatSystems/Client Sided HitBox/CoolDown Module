@@ -1,0 +1,51 @@
+local module = {}
+
+local PlayerWeapons = {}
+local CoolDowns = {
+	Punch1 = .6,
+}
+
+local HitBoxCompadibility = {
+	Punch1 = {"HitBox1"}
+}
+
+function module:SetWeapon(plr, Weapon)
+	PlayerWeapons[plr.UserId] = Weapon
+end
+
+function module:CoolDownCheck(plr, Weapon)
+	--[[local Weapon = PlayerWeapons[plr.UserId]
+	print(Weapon)
+	
+	local CoolDown = CoolDowns[Weapon]
+	print(CoolDown)]]
+	
+	print(Weapon)
+	
+	local CoolDown = CoolDowns[Weapon]
+	
+	print(CoolDowns)
+	print(CoolDowns[Weapon])
+	
+	if not CoolDown then 
+		warn("Weapon Not Found. Possible Exploiter detected")
+	end
+	
+	return CoolDown or nil
+end
+
+function module:HitBoxCheck(plr, weapon)
+	local HitBox = HitBoxCompadibility[weapon]
+	if not HitBox then
+		warn("HitBox not found. Possible Exploiter detected")
+	end
+	print(HitBox)
+	return HitBox or nil
+end
+
+function module:WeaponCheck(plr)
+	
+	return PlayerWeapons[plr.UserId] or nil
+end
+
+return module
