@@ -21,6 +21,7 @@ local function createDamageText(amount, position)
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
 	label.TextScaled = true
+	print(amount)
 	label.Text = tostring(math.floor(amount))
 	label.TextColor3 = Color3.new(1, 0, 0)
 	label.Font = Enum.Font.GothamBold
