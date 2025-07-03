@@ -1,0 +1,17 @@
+local module = {
+	HitBox1  = {
+		Name = "HitBox",
+		Size = Vector3.new(6, 6, 8),
+		Transparency = 0.6,
+		Anchored = true,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+		Color = Color3.new(1, 0, 0),
+
+	},
+}
+
+
+
+return module
