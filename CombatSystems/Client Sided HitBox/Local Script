@@ -14,98 +14,105 @@ local LastUsed = 0
 
 local HitBoxType = "HitBox1"
 
+local allowedProperties = {
+	"Name", "Size", "Transparency", "Anchored",
+	"CanCollide", "CanTouch", "CanQuery", "Color",
+}
+
 local DB = false
 
 UIS.InputBegan:Connect(function(input, proccessed)
 	if proccessed then return end
-	
+
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		if DB then return end
 		print(input)
 		local plr = Players.LocalPlayer
-		
+
 		local Char = plr.Character
 		print(Char)
 		local HRP = Char:FindFirstChild("HumanoidRootPart")
 		if not plr or not Char or not HRP then return end
 
-		
+
 		print("Found")
-		
+
 		local Weapon = Char:FindFirstChildOfClass("Tool")
 		print(Weapon)
 		if not Weapon then return end
-		
+
 		local CoolDown = CoolDownModule:CoolDownCheck(plr, Weapon.Name) or 1
 		print(CoolDown)
 		if not CoolDown then return end
-		
+
 		local Now = tick()
 		if Now - LastUsed < CoolDown then return end
 		LastUsed = Now
-		
+
 		DB = true
-		
+
 		print("Timer Passed")
-		
+
 		local HitBoxPart = Instance.new("Part")
 		local HitBoxObj = HitboxTemplate[HitBoxType]
 		print(HitBoxObj)
-		for i, v in pairs(HitBoxObj) do
-			print(i, v)
-			HitBoxPart[i] = v
+		for i, v in pairs(allowedProperties) do
+			if HitBoxObj[v] ~= nil then
+				print(i, v)
+				HitBoxPart[v] = HitBoxObj[v]
+			end	
 		end
-		
+
 		local elapsed = 0
 		local lifetime = .3
-		
+
 		HitBoxPart.CFrame = HRP.CFrame * CFrame.new(0, 0, -3)
 		HitBoxPart.Parent = game.Workspace:FindFirstChild("HitBoxes")
-		
+
 		local DetectedPlayers = {}
-		
+
 		local connection
 		connection = RunService.Heartbeat:Connect(function(dt)
 			elapsed += dt
 			if elapsed > lifetime then
-				
+
 				DB = false
-				
+
 				connection:Disconnect()
 				HitBoxPart:Destroy()
 			end
-			
-		HitBoxPart.CFrame = HRP.CFrame * CFrame.new(0, 0, -3)
-		
-		local Params = OverlapParams.new()
-		Params.FilterDescendantsInstances = {Char}
-		Params.FilterType = Enum.RaycastFilterType.Exclude
-		
-		local GetPartsInPart = workspace:GetPartsInPart(HitBoxPart, Params)
-			
-		for i, v in pairs(GetPartsInPart) do
-			local Char = v:FindFirstAncestorOfClass("Model")
-			
+
+			HitBoxPart.CFrame = HRP.CFrame * CFrame.new(0, 0, -3)
+
+			local Params = OverlapParams.new()
+			Params.FilterDescendantsInstances = {Char}
+			Params.FilterType = Enum.RaycastFilterType.Exclude
+
+			local GetPartsInPart = workspace:GetPartsInPart(HitBoxPart, Params)
+
+			for i, v in pairs(GetPartsInPart) do
+				local Char = v:FindFirstAncestorOfClass("Model")
+
 				if Char then 
-			if not table.find(DetectedPlayers, Char) then
-				print(DetectedPlayers)
-			
-			
-				local VictimHRP = Char:FindFirstChild("HumanoidRootPart")
-				if not VictimHRP then return end
-			
-			
-					local payload = {
-						VictimHRP = VictimHRP,
-						HitBoxType = HitBoxType,
-						WeaponType = Weapon.Name,
-						CoolDownTime = CoolDown
-					}
-				
-				
-					print("Firing to server for", Char.Name)
-					DataToServer:FireServer(HRP, payload)
-					table.insert(DetectedPlayers, Char)
+					if not table.find(DetectedPlayers, Char) then
+						print(DetectedPlayers)
+
+
+						local VictimHRP = Char:FindFirstChild("HumanoidRootPart")
+						if not VictimHRP then return end
+
+
+						local payload = {
+							VictimHRP = VictimHRP,
+							HitBoxType = HitBoxType,
+							WeaponType = Weapon.Name,
+							CoolDownTime = CoolDown
+						}
+
+
+						print("Firing to server for", Char.Name)
+						DataToServer:FireServer(HRP, payload)
+						table.insert(DetectedPlayers, Char)
 					end
 				end
 			end
