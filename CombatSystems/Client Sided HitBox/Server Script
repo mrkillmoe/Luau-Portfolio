@@ -12,6 +12,8 @@ local HitBoxTemplateModule = require(ReplicatedModules:FindFirstChild("HitBoxTem
 
 local DamageEvent = RS:WaitForChild("Remotes"):WaitForChild("DamageEvent")
 
+local MaxDistanceFromHitBox = 5
+
 local CoolDowns = {}
 local LastUsedTable = {}
 
@@ -44,8 +46,6 @@ DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
 	
 	local ClientHitBoxType = Data.HitBoxType
 	
-	local HitBoxes = CoolDownModule:HitBoxCheck(plr, Weapon)
-	
 	if not HitBoxTemplateModule:IsCompatible(Weapon, ClientHitBoxType) then
 		warn("HitBox not compatible with this weapon")
 		return
@@ -72,7 +72,10 @@ DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
 	
 
 	local HitBoxDistance = (clientHRP.Position - VictimHRP.Position).Magnitude
-	if HitBoxDistance > HitBoxTemplateModule[HitBoxType].Size.Z then return end
+	if HitBoxDistance > HitBoxTemplateModule[HitBoxType].Size.Z + MaxDistanceFromHitBox then
+		warn("Possible Exploiter. HitBoxSize Doesnt Match")
+		return
+	end
 	print(HitBoxDistance)
 	
 	
