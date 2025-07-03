@@ -5,10 +5,6 @@ local CoolDowns = {
 	Punch1 = .6,
 }
 
-local HitBoxCompadibility = {
-	Punch1 = {"HitBox1"}
-}
-
 function module:SetWeapon(plr, Weapon)
 	PlayerWeapons[plr.UserId] = Weapon
 end
@@ -32,15 +28,6 @@ function module:CoolDownCheck(plr, Weapon)
 	end
 	
 	return CoolDown or nil
-end
-
-function module:HitBoxCheck(plr, weapon)
-	local HitBox = HitBoxCompadibility[weapon]
-	if not HitBox then
-		warn("HitBox not found. Possible Exploiter detected")
-	end
-	print(HitBox)
-	return HitBox or nil
 end
 
 function module:WeaponCheck(plr)
