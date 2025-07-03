@@ -1,0 +1,95 @@
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local RS = game:GetService("ReplicatedStorage")
+local ReplicatedModules = RS:FindFirstChild("Modules")
+local ServerModules = ServerStorage:FindFirstChild("Modules")
+local DataToServer = RS:FindFirstChild("Remotes"):FindFirstChild("DataToServer")
+
+local CoolDownModule = require(ServerModules:FindFirstChild("CoolDownModule"))
+local DamageModule = require(ServerModules:FindFirstChild("DamageModule"))
+local CreatorTagModule = require(ServerModules:FindFirstChild("CreatorTagModule"))
+local HitBoxTemplateModule = require(ReplicatedModules:FindFirstChild("HitBoxTemplate"))
+
+local DamageEvent = RS:WaitForChild("Remotes"):WaitForChild("DamageEvent")
+
+local CoolDowns = {}
+local LastUsedTable = {}
+
+DataToServer.OnServerEvent:Connect(function(plr:Player, clientHRP:Part, Data)
+	
+	local MaxDistance = 1
+	local ClientCooldown = Data.CoolDownTime
+	print(ClientCooldown)
+	
+	local Weapon = Data.WeaponType
+	local EquippedTool = plr.Character:FindFirstChildOfClass("Tool")
+	if not EquippedTool or EquippedTool.Name ~= Weapon then
+		warn("EquippedWeapon not found or not match. Possible Exploiter")
+		return
+	end
+	
+	print(Weapon)
+	
+	if ClientCooldown ~= CoolDownModule:CoolDownCheck(plr, Weapon.Name) then 
+		warn("Diffrent Cooldowns. Possible Exploiter")
+		return
+	end
+	
+	local Now = tick()
+	local LastUsed = LastUsedTable[plr.UserId] or 0
+	if Now - LastUsed < ClientCooldown then 
+			warn("CoolDown not over")
+		return 
+	end
+	
+	local ClientHitBoxType = Data.HitBoxType
+	
+	local HitBoxes = CoolDownModule:HitBoxCheck(plr, Weapon)
+	
+	if ClientHitBoxType ~= HitBoxes or ClientHitBoxType ~= HitBoxes[ClientHitBoxType] then
+		warn("HitBoxes Dont Match")
+		return
+	end
+	
+	
+	
+	local ServerRoot = plr.Character:FindFirstChild("HumanoidRootPart")
+	local plrDistance = (clientHRP.Position - ServerRoot.Position).Magnitude
+	if plrDistance > 1 then return end
+	print(Data)
+	
+	local VictimHRP = Data.VictimHRP
+	if not VictimHRP or not VictimHRP:IsDescendantOf(game) then
+		warn("Invalid VictimHRP")
+		return
+	end
+
+	local HitBoxType = Data.HitBoxType
+	
+	local VictimChar = VictimHRP:FindFirstAncestorOfClass("Model")
+	if not VictimChar then
+		warn("Victim Character not found")
+		return
+	end
+	
+
+	local HitBoxDistance = (clientHRP.Position - VictimHRP.Position).Magnitude
+	if HitBoxDistance > HitBoxTemplateModule[HitBoxType].Size.Z then return end
+	print(HitBoxDistance)
+	
+	
+	local Damage = DamageModule
+	if not Damage then return end
+	
+	local VictimHum = VictimChar:FindFirstChild("Humanoid")
+	
+	if VictimHum and VictimHum.Health > 0 then
+		VictimHum:TakeDamage(Damage[Weapon])
+		DamageEvent:FireClient(plr, Damage)
+	end
+	
+	print(Damage)
+	
+	CreatorTagModule:CreateTag(plr, VictimChar)
+	
+end)
