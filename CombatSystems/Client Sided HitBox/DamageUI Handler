@@ -1,0 +1,49 @@
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local remote = RS:WaitForChild("Remotes"):WaitForChild("DamageEvent")
+
+local function createDamageText(amount, position)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Adornee = nil
+	billboard.Size = UDim2.new(0, 100, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 100
+	billboard.Parent = workspace.Terrain
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Text = tostring(math.floor(amount))
+	label.TextColor3 = Color3.new(1, 0, 0)
+	label.Font = Enum.Font.GothamBold
+	label.Parent = billboard
+
+	local attachment = Instance.new("Attachment", workspace.Terrain)
+	attachment.WorldPosition = position
+	billboard.Adornee = attachment
+
+	local tween = TweenService:Create(billboard, TweenInfo.new(0.8), {
+		StudsOffset = Vector3.new(0, 4, 0)
+	})
+	local fade = TweenService:Create(label, TweenInfo.new(0.8), {
+		TextTransparency = 1
+	})
+
+	tween:Play()
+	fade:Play()
+
+	game.Debris:AddItem(billboard, 1.5)
+	game.Debris:AddItem(attachment, 1.5)
+end
+
+remote.OnClientEvent:Connect(function(damage, position)
+	createDamageText(damage, position)
+end)
