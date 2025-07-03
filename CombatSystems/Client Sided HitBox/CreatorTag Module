@@ -1,0 +1,24 @@
+local module = {}
+
+function module:CreateTag(player, Victim)
+	local Players = game:GetService("Players")
+	local Tag = Instance.new("ObjectValue")
+	Tag.Name = "creator"
+	Tag.Value = player
+	Tag.Parent = Victim:FindFirstChild("Humanoid")
+	game.Debris:AddItem(Tag, 1)
+end
+
+function module:CheckTag(player, Victim)
+	if Victim:FindFirstChild("creator") then
+		if Victim.creator.Value == player then
+			return true
+		else
+			return false
+		end
+	else
+		return false
+	end
+end
+
+return module
