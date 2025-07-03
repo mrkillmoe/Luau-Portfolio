@@ -8,10 +8,18 @@ local module = {
 		CanTouch = false,
 		CanQuery = false,
 		Color = Color3.new(1, 0, 0),
-
+		CompatibleWeapons = {"Punch1"},
 	},
 }
 
+function module:IsCompatible(Weapon, HitBoxType)
+	local Hitbox = module[HitBoxType]
+	if not Hitbox then return false end
 
+	local List = Hitbox.CompatibleWeapons
+	if not List then return false end
+
+	return table.find(List, Weapon) ~= nil
+end
 
 return module
