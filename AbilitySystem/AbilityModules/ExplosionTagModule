@@ -1,0 +1,128 @@
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UtilityModule = require(ServerStorage:FindFirstChild("Modules"):FindFirstChild("UtilityModule"))
+local CooldownRemote = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("CoolDownRemote")
+local Teams = game:GetService("Teams")
+
+local module = {}
+
+module.Config = {
+	Price = 0,
+	AnimationId = nil, -- You can assign one later if needed
+	Bomb = ServerStorage:FindFirstChild("Abilities"):FindFirstChild("Bomb"), -- Ensure this path is correct
+	Cooldown = 5,
+	Duration = 3,
+	ExplosionDuration = 2,
+	RagdollDuration = 3,
+	Radius = 30,
+	KnockBackStrength = 300,
+	UsersTeam = "",
+	TeamOnly = "",
+}
+
+local CoolDowns = {}
+
+function module.OnActivation(plr: Player)
+	local now = tick()
+	local lastUsed = CoolDowns[plr.UserId] or 0
+
+	if now - lastUsed < module.Config.Cooldown then
+		warn("CoolDown Still Active")
+		return
+	end
+
+	if plr:GetAttribute("Frozen") == true then
+		return
+	end
+
+	CoolDowns[plr.UserId] = now
+
+	CooldownRemote:FireClient(plr, module.Config.Cooldown)
+	module.DropBomb(plr)
+end
+
+function module.Explode(bomb)
+	local playersInRange = UtilityModule.GetPlayersInRadius(bomb.Position, module.Config.Radius)
+	if not playersInRange or #playersInRange == 0 then
+		warn("PlayersInRange is empty!!", playersInRange)
+	end
+
+	local explosion = Instance.new("Explosion")
+	explosion.BlastRadius = module.Config.Radius
+	explosion.BlastPressure = 0
+	explosion.DestroyJointRadiusPercent = 0
+	explosion.Position = bomb.Position
+	explosion.Parent = workspace
+
+	UtilityModule.Debris(explosion, module.Config.ExplosionDuration)
+
+	for _, plr in pairs(playersInRange) do
+		local char = plr.Character
+		if not char then
+			warn(plr.Name .. " has no character.")
+			continue
+		end
+
+		local direction = (char.PrimaryPart.Position - bomb.Position).Unit
+
+		-- Uncomment if knockback is needed
+		-- UtilityModule.ApplyKnockback(char, direction, module.Config.KnockBackStrength)
+
+		UtilityModule.RagdollPlayer(plr, module.Config.RagdollDuration)
+	end
+end
+
+function module.Counter(plr, bomb)
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Parent = bomb
+	billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+	billboardGui.Size = UDim2.new(3, 0, 3, 0)
+	billboardGui.MaxDistance = 100
+	billboardGui.AlwaysOnTop = true
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Parent = billboardGui
+	textLabel.BackgroundTransparency = 1
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.TextScaled = true
+	textLabel.Text = module.Config.Duration
+
+	for i = 1, module.Config.Duration do
+		textLabel.Text = tostring(module.Config.Duration - i)
+		task.wait(1)
+
+		if i == module.Config.Duration then
+			module.Explode(bomb)
+		end
+	end
+end
+
+function module.DropBomb(plr: Player)
+	print("Received drop request")
+	local char = plr.Character
+	if not char then return end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp then return end
+
+	local direction = hrp.CFrame.LookVector
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+
+	if module.Config.AnimationId then
+		local animation = Instance.new("Animation")
+		animation.AnimationId = module.Config.AnimationId
+
+		local track = animator:LoadAnimation(animation)
+		track.Priority = Enum.AnimationPriority.Action
+		track:Play()
+	end
+
+	local newBomb = module.Config.Bomb:Clone()
+	newBomb.Parent = workspace:FindFirstChild("Debris") or workspace
+	newBomb.Position = hrp.Position + direction * 10
+
+	module.Counter(plr, newBomb)
+end
+
+return module
