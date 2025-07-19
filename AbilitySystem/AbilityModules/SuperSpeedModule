@@ -1,0 +1,89 @@
+local module = {}
+local CoolDownRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):FindFirstChild("CoolDownRemote")
+
+local CoolDowns = {}
+local SavedWalkSpeed = {}
+local PlayingTracks = {} -- Store AnimationTracks per player
+
+module.Config = {
+	Price = 0,
+	Cooldown = 10,
+	Duration = 3,
+	WalkSpeed = 100,
+	AnimationId = nil, -- Replace with your actual animation ID
+	TeamOnly = "",
+}
+
+function module.OnActivation(plr)
+	local Now = tick()
+	local LastUsed = CoolDowns[plr.UserId] or 0
+	if Now - LastUsed < module.Config.Cooldown then 
+		warn("CoolDown Still Active")
+		return
+	end
+
+	if plr:GetAttribute("Frozen") == true then 
+		return
+	end
+
+	CoolDowns[plr.UserId] = Now
+	print("CoolDown Passed")
+	CoolDownRemote:FireClient(plr, module.Config.Cooldown)
+	module.ApplySpeed(plr)
+
+	task.delay(module.Config.Duration, function()
+		module.ResetSpeed(plr)
+	end)
+end
+
+function module.ApplySpeed(plr)
+	local Char = plr.Character
+	if not Char then return end
+
+	local Hum = Char:FindFirstChild("Humanoid")
+	if not Hum then return end
+
+	local Animator = Hum:FindFirstChildOfClass("Animator")
+	if not Animator then
+		Animator = Instance.new("Animator")
+		Animator.Name = "Animator"
+		Animator.Parent = Hum
+	end
+
+	SavedWalkSpeed[plr.UserId] = Hum.WalkSpeed
+	Hum.WalkSpeed = module.Config.WalkSpeed
+
+	if module.Config.AnimationId then
+		local Animation = Instance.new("Animation")
+		Animation.AnimationId = module.Config.AnimationId
+
+		local Track = Animator:LoadAnimation(Animation)
+		Track.Priority = Enum.AnimationPriority.Action
+		Track:Play()
+
+		PlayingTracks[plr.UserId] = Track
+	end
+end
+
+function module.ResetSpeed(plr)
+	local Char = plr.Character
+	if not Char then return end
+
+	local Hum = Char:FindFirstChild("Humanoid")
+	if not Hum then return end
+
+	if SavedWalkSpeed[plr.UserId] then
+		Hum.WalkSpeed = SavedWalkSpeed[plr.UserId]
+	else 
+		Hum.WalkSpeed = 16
+		warn("WalkSpeed Not Saved")	
+	end
+
+	local Track = PlayingTracks[plr.UserId]
+	if Track and Track.IsPlaying then
+		Track:Stop()
+	end
+	PlayingTracks[plr.UserId] = nil
+end
+
+return module
