@@ -1,0 +1,42 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local CoolDownRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):FindFirstChild("CoolDownRemote")
+
+local StartFlight = Remotes:WaitForChild("StartFlying")
+local StopFlight = Remotes:WaitForChild("StopFlying")
+
+local Cooldowns = {}
+
+local module = {}
+
+module.Config = {
+	Price = 0,
+	Cooldown = 15,
+	Duration = 6,
+}
+
+function module.OnActivation(plr)
+	local Now = tick()
+	local LastUsed = Cooldowns[plr.UserId] or 0
+
+	if Now - LastUsed < module.Config.Cooldown then
+
+		local TimeLeft = math.ceil(module.Config.Cooldown - (Now - LastUsed))
+			warn("Still on cooldown")
+		return
+	end
+
+	if plr:GetAttribute("Frozen") then return end
+
+	Cooldowns[plr.UserId] = Now
+	CoolDownRemote:FireClient(plr, module.Config.Cooldown)
+	StartFlight:FireClient(plr, module.Config.Duration)
+
+	task.delay(module.Config.Duration, function()
+		StopFlight:FireClient(plr)
+	end)
+end
+
+return module
