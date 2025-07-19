@@ -1,0 +1,79 @@
+local ServerStorage = game:GetService("ServerStorage")
+local UtilityModule = require(ServerStorage:FindFirstChild("Modules"):FindFirstChild("UtilityModule"))
+local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
+local CoolDownRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):FindFirstChild("CoolDownRemote")
+
+local module = {}
+
+local CoolDowns = {}
+
+module.Config = {
+	Price = 0,
+	Cooldown = 10,
+	Duration = 1,
+	WalkSpeed = 100,
+	AnimationId = nil,
+	TeamOnly = "",
+	KnockBackStrength = 250,
+	Radius = 6,
+}
+
+local SlideConnections = {}
+local Intermission = false
+
+for _, v in pairs(ServerScriptService:GetChildren()) do
+	if v:IsA("BoolValue") and v.Name == "OnIntermission" then
+		OnIntermission = v
+		break
+	end
+end
+
+if not OnIntermission then
+	warn("OnIntermission Bool not found in ServerScriptService")
+end
+
+
+function module.OnActivation(plr)
+	if not Intermission or Intermission.Value then return end
+
+	if SlideConnections[plr] then
+		SlideConnections[plr]:Disconnect()
+	end
+
+	SlideConnections[plr] = plr:GetAttributeChangedSignal("IsSliding"):Connect(function()
+		if plr:GetAttribute("IsSliding") then
+			SlideConnections[plr]:Disconnect()
+			CoolDownRemote:FireClient(plr, module.Config.Cooldown)
+			module.StartDetection(plr)
+			CoolDowns[plr.UserId] = tick()
+		end
+	end)
+end
+
+function module.StartDetection(plr)
+	local StartTime = tick()
+
+	while tick() - StartTime < module.Config.Duration and plr:GetAttribute("IsSliding") do
+		if Intermission and Intermission.Value then
+			print("Canceled due to intermission")
+			return
+		end
+
+		local Char = plr.Character
+		local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+		if HRP then
+			local Targets = UtilityModule.GetPlayersInRadius(HRP.Position, module.Config.Radius)
+			for _, target in pairs(Targets) do
+				if target ~= plr and target.Character then
+					local Direction = (target.Character.PrimaryPart.Position - HRP.Position).Unit
+					UtilityModule.ApplyKnockback(target.Character, Direction, module.Config.KnockBackStrength)
+					UtilityModule.RagdollPlayer(target, 2)
+				end
+			end
+		end
+		task.wait(0.1)
+	end
+end
+
+return module
