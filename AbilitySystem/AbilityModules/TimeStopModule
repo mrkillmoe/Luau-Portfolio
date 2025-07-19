@@ -1,0 +1,91 @@
+local Players = game:GetService("Players")
+local Teams = game:GetService("Teams")
+local CoolDownRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):FindFirstChild("CoolDownRemote")
+local module = {}
+
+module.Config = {
+	Price = 0,
+	Cooldown = 5,
+	Duration = 3,
+	Radius = 30,
+	OriginalWalkSpeed = 16, --Change to the WalkSpeed set in your game
+	TeamTagger = "Tagger", --If either of these teams dont match your team names change them here.
+	TeamRunners = "Runners",
+	TeamOnly = "",
+}
+
+local CoolDowns = {}
+module.FrozenPlayers = {}
+
+function module.FreezePlayers(plr)
+	print("Freeze Func REcieved")
+	for i, team in pairs(Teams:GetChildren()) do
+		if team.Name == module.Config.TeamTagger or team.Name == module.Config.TeamRunners then
+			for i, player in pairs(Players:GetChildren()) do
+				if not player:GetAttribute("Frozen") then
+					if player.Character and player ~= plr then -- The reason for ~= plr is so it doesnt freeze the one that casted it
+						print(player)
+						local HRP = player.Character:FindFirstChild("HumanoidRootPart")
+						local Humanoid = player.Character:FindFirstChild("Humanoid")
+						if HRP and Humanoid then
+							print("HRP AND HUMANOID PASSED")
+							HRP.Anchored = true
+							Humanoid.WalkSpeed = 0
+							print(HRP.Anchored)
+							Humanoid.Animator:Destroy()
+							player:SetAttribute("Frozen", true)
+							print(player:GetAttribute("Frozen"))
+							module.FrozenPlayers[player.UserId] = player
+							print(module.FrozenPlayers)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function module.UnFreezePlayers()
+	for i, player in pairs(module.FrozenPlayers) do
+		local Char = game.Players:GetPlayerByUserId(i).Character
+		if Char then
+			local HRP = Char:FindFirstChild("HumanoidRootPart")
+			local Humanoid = Char:FindFirstChild("Humanoid")
+			if HRP and Humanoid then
+				HRP.Anchored = false
+				Humanoid.WalkSpeed = module.Config.OriginalWalkSpeed
+				local Animator = Instance.new("Animator")
+				Animator.Parent = Humanoid
+				Animator.Name = "Animator"
+				player:SetAttribute("Frozen", false)
+				module.FrozenPlayers[player.UserId] = nil
+			end
+		end
+	end	
+end
+
+function module.OnActivation(plr)
+	local Now = tick()
+	local LastUsed = CoolDowns[plr.UserId] or 0
+	if Now - LastUsed < module.Config.Cooldown then 
+		warn("CoolDown Still Active")
+		return
+	end
+
+	if plr:GetAttribute("Frozen") == true then 
+		return
+	end
+
+	CoolDowns[plr.UserId] = Now
+
+	print("Freeze Func fired")
+	CoolDownRemote:FireClient(plr, module.Config.Cooldown)
+	module.FreezePlayers(plr)
+
+	task.delay(module.Config.Duration, function()
+		print("UnFreeze Func fired")
+		module.UnFreezePlayers()
+	end)
+end
+
+return module
