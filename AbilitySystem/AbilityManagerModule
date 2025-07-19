@@ -1,0 +1,27 @@
+local ServerStorage = game:GetService("ServerStorage")
+local LoadedAbilities = require(ServerStorage:FindFirstChild("Modules"):FindFirstChild("AbilityModuleLoader"))
+
+local module = {}
+
+function module.EquipAbility(Player, AbilityName)
+	Player:SetAttribute("CurrentAbility", AbilityName)
+	if AbilityName == "" then
+		print(Player.Name .. " unequipped their ability")
+	else
+		print(Player.Name .. " equipped:", AbilityName)
+	end
+end
+
+function module.AbilityActivation(Player)
+	local CurrentAbility = Player:GetAttribute("CurrentAbility")
+	if not CurrentAbility then return end
+
+	local AbilityModule = LoadedAbilities[CurrentAbility]
+	if AbilityModule and AbilityModule.OnActivation then
+		AbilityModule.OnActivation(Player)
+	else
+		warn("Ability module not found for", CurrentAbility)
+	end
+end
+
+return module
