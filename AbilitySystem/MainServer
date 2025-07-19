@@ -1,0 +1,103 @@
+print("Ability system server script started!")
+
+local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local ServerMods = ServerStorage:WaitForChild("Modules")
+
+local AbilityModule = require(ServerMods:FindFirstChild("AbilityManager"))
+local AbilitySaveModule = require(ServerMods:FindFirstChild("AbilitySaveModule"))
+local AbilityLoader = require(ServerMods:FindFirstChild("AbilityModuleLoader"))
+
+local AbilityActivationEvent = Remotes:WaitForChild("AbilityActivationEvent")
+local AbilityEquipEvent = Remotes:WaitForChild("AbilityEquipEvent")
+local AbilityUnlockEvent = Remotes:WaitForChild("AbilityUnlockEvent")
+
+local OnIntermission = false -- Placeholder
+
+for _, v in pairs(ServerScriptService:GetChildren()) do
+	if v:IsA("BoolValue") and v.Name == "OnIntermission" then
+		OnIntermission = v
+		break
+	end
+end
+
+if not OnIntermission then
+	warn("OnIntermission Bool not found in ServerScriptService")
+end
+
+game.Players.PlayerAdded:Connect(function(plr)
+	AbilitySaveModule.LoadData(plr)
+	plr:SetAttribute("DefaultWalkSpeed", plr.Character and plr.Character.Humanoid.WalkSpeed or 16)
+
+end)
+
+game.Players.PlayerRemoving:Connect(function(plr)
+	AbilitySaveModule.SaveData(plr)
+	AbilitySaveModule.Clear(plr)
+end)
+
+AbilityActivationEvent.OnServerEvent:Connect(function(plr)
+	if plr:GetAttribute("CurrentAbility") and not OnIntermission then
+		AbilityModule.AbilityActivation(plr)
+	end
+end)
+
+AbilityUnlockEvent.OnServerEvent:Connect(function(plr, Ability)
+	print("AbilityUnlockEvent Received from", plr, Ability)
+	if not AbilitySaveModule.PlayerAbilities[plr.UserId] and OnIntermission then
+		AbilitySaveModule.LoadData(plr)
+	end
+
+	if AbilitySaveModule.HasUnlocked(plr, Ability) then
+		warn(plr.Name .. " already unlocked " .. Ability)
+		return
+	end
+
+	local AbilityData = AbilityLoader[Ability]
+	if not AbilityData then
+		warn("No module for ability:", Ability)
+		return
+	end
+
+	print(AbilityData.Config, AbilityData.Config.Price)
+
+	if not AbilityData.Config or not AbilityData.Config.Price then
+		warn("Missing config or price for ability:", Ability)
+		return
+	end
+
+	local Cost = AbilityData.Config.Price
+	if plr:FindFirstChild("leaderstats") and plr.leaderstats:FindFirstChild("Coins") then
+		if plr.leaderstats.Coins.Value >= Cost then
+			plr.leaderstats.Coins.Value -= Cost
+			AbilitySaveModule.UnLock(plr, Ability)
+			print(plr.Name .. " successfully purchased " .. Ability)
+		else
+			warn(plr.Name .. " does not have enough coins for " .. Ability)
+		end
+	else
+		warn("Leaderstats or Coins missing for", plr.Name)
+	end
+end)
+
+AbilityEquipEvent.OnServerEvent:Connect(function(plr, Ability)
+	if OnIntermission then
+	if Ability == "" then
+		AbilityModule.EquipAbility(plr, "")
+		return
+	end
+
+	if not AbilitySaveModule.HasUnlocked(plr, Ability) then
+		warn("Player has not unlocked this ability")
+		return
+	end
+
+	AbilityModule.EquipAbility(plr, Ability)
+	
+	else
+		warn("OnIntermission == False, Possible Exploiter")
+	end
+end)
