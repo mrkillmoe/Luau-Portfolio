@@ -1,0 +1,131 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+local cam = workspace.CurrentCamera
+
+local flying = false
+local flightForce
+local duration = 0
+
+local W, A, S, D = false, false, false, false
+local UpPressed, DownPressed = false, false
+local IsMobile = UIS.TouchEnabled
+
+local MobileUI = player:FindFirstChild("PlayerGui"):FindFirstChild("MobileButtons"):FindFirstChild("FlightControll")
+
+-- Mobile UI Setup
+local function CreateButton(name, position)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Text = name
+	btn.Size = UDim2.new(0, 80, 0, 80)
+	btn.Position = position
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.TextScaled = true
+	btn.Parent = player:WaitForChild("PlayerGui"):WaitForChild("AbilityUI")
+	return btn
+end
+
+local function SetupMobileControls()
+	local upBtn = MobileUI:FindFirstChild("Upward")
+	local downBtn = MobileUI:FindFirstChild("Downward")
+	
+	MobileUI.Visible = true
+
+	upBtn.MouseButton1Down:Connect(function() UpPressed = true end)
+	upBtn.MouseButton1Up:Connect(function() UpPressed = false end)
+
+	downBtn.MouseButton1Down:Connect(function() DownPressed = true end)
+	downBtn.MouseButton1Up:Connect(function() DownPressed = false end)
+end
+
+-- PC input handling
+UIS.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.W then W = true end
+	if input.KeyCode == Enum.KeyCode.A then A = true end
+	if input.KeyCode == Enum.KeyCode.S then S = true end
+	if input.KeyCode == Enum.KeyCode.D then D = true end
+	if input.KeyCode == Enum.KeyCode.Space then UpPressed = true end
+	if input.KeyCode == Enum.KeyCode.LeftControl then DownPressed = true end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then W = false end
+	if input.KeyCode == Enum.KeyCode.A then A = false end
+	if input.KeyCode == Enum.KeyCode.S then S = false end
+	if input.KeyCode == Enum.KeyCode.D then D = false end
+	if input.KeyCode == Enum.KeyCode.Space then UpPressed = false end
+	if input.KeyCode == Enum.KeyCode.LeftControl then DownPressed = false end
+end)
+
+-- Remote Events
+local StartFlying = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StartFlying")
+local StopFlying = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StopFlying")
+
+StartFlying.OnClientEvent:Connect(function(flightDuration)
+	if flying then return end
+	flying = true
+	duration = flightDuration
+
+	char:WaitForChild("Animate").Disabled = true
+
+	flightForce = Instance.new("BodyVelocity")
+	flightForce.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	flightForce.Velocity = Vector3.zero
+	flightForce.Name = "FlightForce"
+	flightForce.Parent = hrp
+
+	if IsMobile then
+		SetupMobileControls()
+	end
+
+	local start = tick()
+	while flying and (tick() - start < duration) do
+		local move = Vector3.zero
+		local look = cam.CFrame.LookVector
+		local right = cam.CFrame.RightVector
+
+		if IsMobile then
+			move = hum.MoveDirection
+		else
+			if W then move += look end
+			if S then move -= look end
+			if A then move -= right end
+			if D then move += right end
+		end
+
+		if UpPressed then move += Vector3.new(0, 1, 0) end
+		if DownPressed then move -= Vector3.new(0, 1, 0) end
+
+		if move.Magnitude > 0 then
+			flightForce.Velocity = move.Unit * 100
+		else
+			flightForce.Velocity = Vector3.zero
+		end
+
+		RunService.RenderStepped:Wait()
+	end
+
+	flying = false
+	if MobileUI and MobileUI.Visible then
+		MobileUI.Visible = false
+	end
+	if flightForce then flightForce:Destroy() end
+	char.Animate.Disabled = false
+end)
+
+StopFlying.OnClientEvent:Connect(function()
+	flying = false
+	if MobileUI and MobileUI.Visible then
+		MobileUI.Visible = false
+	end
+end)
