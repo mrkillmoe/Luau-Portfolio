@@ -1,0 +1,188 @@
+local ServerScriptService = game:GetService("ServerScriptService")
+local UIS = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local plr = game.Players.LocalPlayer
+repeat task.wait() until plr:FindFirstChild("PlayerGui") and ReplicatedStorage:FindFirstChild("Remotes")
+task.wait(0.5)
+
+local AbilityIcons = require(ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("AbilityIcons"))
+
+local GUI = script.Parent
+local ActivateButtonFrame = GUI:WaitForChild("ActivateButtonFrame")
+--local AbilityButton = ActivateButtonFrame:FindFirstChild("ActivateButton")
+local AbilityButton = ActivateButtonFrame:FindFirstChild("ActivateImageButton")
+local EquippedAbilityLabel = AbilityButton:FindFirstChild("TextLabel")
+
+local InventoryToggleFrame = GUI:WaitForChild("InventoryToggleFrame")
+local InventoryToggleButton = InventoryToggleFrame:FindFirstChild("InventoryToggleButton")
+local InventoryFrame = GUI:WaitForChild("InventoryFrame")
+
+local DetailsFrame = GUI:WaitForChild("DetailsFrame")
+local AbilityNameLabel = DetailsFrame:FindFirstChild("AbilityNameLabel")
+local AbilityDescription = DetailsFrame:FindFirstChild("AbilityDescription")
+local ExitButton = DetailsFrame:FindFirstChild("ExitButton")
+local PurchaseButton = DetailsFrame:FindFirstChild("PurchaseButton")
+local EquipButton = DetailsFrame:FindFirstChild("EquipButton")
+local UnEquipButton = DetailsFrame:FindFirstChild("UnEquipButton")
+
+local AbilityEquipEvent = Remotes:WaitForChild("AbilityEquipEvent")
+local AbilityUnlockEvent = Remotes:WaitForChild("AbilityUnlockEvent")
+local AbilityActivationEvent = Remotes:WaitForChild("AbilityActivationEvent")
+local AbilityStatusFunction = Remotes:WaitForChild("AbilityStatusFunction")
+
+
+local CooldownRemote = Remotes:WaitForChild("CoolDownRemote")
+
+local DB = false
+local OnIntermission
+
+for _, v in pairs(ServerScriptService:GetChildren()) do
+	if v:IsA("BoolValue") and v.Name == "OnIntermission" then
+		OnIntermission = v
+	end
+end
+
+local ReplicatedMods = ReplicatedStorage:WaitForChild("Modules")
+local DescriptionModule = require(ReplicatedMods:FindFirstChild("DescriptionHandler"))
+
+local Abilities = {}
+
+local function updateUIState(AbilityId)
+	local unlocked, equipped = AbilityStatusFunction:InvokeServer(AbilityId)
+
+	PurchaseButton.Visible = not unlocked
+	EquipButton.Visible = unlocked and not equipped
+	UnEquipButton.Visible = unlocked and equipped
+
+	local iconData = AbilityIcons[AbilityId]
+	if iconData then
+		AbilityButton.Image = iconData.Image or "" -- fallback if empty
+		EquippedAbilityLabel.Text = iconData.DisplayName or AbilityId
+	else
+		AbilityButton.Image = ""
+		EquippedAbilityLabel.Text = "No Ability"
+	end
+end
+
+
+for _, Button in ipairs(InventoryFrame:GetChildren()) do
+	if Button:IsA("TextButton") then
+		if not Button:GetAttribute("AbilityId") then
+			Button:SetAttribute("AbilityId", Button.Text)
+		end
+		
+		print(Button:GetAttribute("AbilityId"))
+
+		table.insert(Abilities, Button)
+
+		Button.Activated:Connect(function()
+			local AbilityId = Button:GetAttribute("AbilityId")
+			if not AbilityId then return end
+
+			AbilityNameLabel.Text = AbilityId
+			AbilityDescription.Text = DescriptionModule[AbilityId] or "No description available"
+
+			DetailsFrame.Visible = true
+
+			updateUIState(AbilityId)
+		end)
+	end
+end
+
+CooldownRemote.OnClientEvent:Connect(function(duration)
+	local button = AbilityButton
+	if not button then return end
+
+	local label = button:FindFirstChild("CoolDownLabel")
+	if not label then return end
+
+	label.Visible = true
+
+	for i = duration, 1, -1 do
+		label.Text = tostring(i)
+		task.wait(1)
+	end
+
+	label.Visible = false
+	label.Text = "Loading..."
+end)
+
+
+local function InputHandler()
+	AbilityActivationEvent:FireServer()
+end
+
+UIS.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.Q then
+		if DB then return end
+		
+		if plr:GetAttribute("Frozen") == true then 
+			return
+		end
+		InputHandler()
+	end
+end)
+
+AbilityButton.Activated:Connect(function()
+	if plr:GetAttribute("Frozen") == true then 
+		return
+	end
+	InputHandler()
+end)
+
+InventoryToggleButton.Activated:Connect(function()
+	local Visible = InventoryFrame.Visible
+	InventoryFrame.Visible = not Visible
+	if Visible then DetailsFrame.Visible = false end
+end)
+
+if OnIntermission then
+	OnIntermission.Changed:Connect(function()
+		local isIntermission = OnIntermission.Value
+		if not isIntermission then
+			DetailsFrame.Visible = false
+			InventoryFrame.Visible = false
+			InventoryToggleButton.Visible = false
+		else
+			InventoryToggleButton.Visible = true
+		end
+	end)
+end
+
+ExitButton.Activated:Connect(function()
+	DetailsFrame.Visible = false
+end)
+
+
+task.defer(function()
+PurchaseButton.Activated:Connect(function()
+	local AbilityId = AbilityNameLabel.Text
+	print("Connected")
+	if AbilityId then
+		print("PassedAbilityIdCheck")
+		AbilityUnlockEvent:FireServer(AbilityId)
+		print("Fired to server")
+		task.wait(0.2)
+		updateUIState(AbilityId)
+		print("UpdateUIState fired")
+	end
+	end)
+end)
+
+EquipButton.Activated:Connect(function()
+	local AbilityId = AbilityNameLabel.Text
+	if AbilityId then
+		AbilityEquipEvent:FireServer(AbilityId)
+		task.wait(0.2)
+		updateUIState(AbilityId)
+	end
+end)
+
+UnEquipButton.Activated:Connect(function()
+	AbilityEquipEvent:FireServer("")
+	task.wait(0.2)
+	updateUIState(AbilityNameLabel.Text)
+end)
