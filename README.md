@@ -5,6 +5,10 @@ Every system listed here was made 100% by me.
 
 Systems
 
+[AbilitySystems](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AbilitySystem)
+My most recent Ability system from a commission
+[See AbilitySystem here](https://www.youtube.com/watch?v=JP1tGExD5oI)
+
 [CombatSystems](https://github.com/mrkillmoe/Luau-Portfolio/blob/main/CombatSystems)
 A Folder of Combat Systems Ive made. They are all accurate but every new entry will be more accurate then the last.
 [Watch ClientSide HitBoxes](https://www.youtube.com/watch?v=KcvRt3xTKSY)
