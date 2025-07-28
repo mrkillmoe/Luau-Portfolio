@@ -3,8 +3,6 @@ All of these systems were made in under 2 days each. I also have experience codi
 
 Every system listed here was made 100% by me.
 
-Systems
-
 [AbilitySystems](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AbilitySystem)
 My most recent Ability system from a commission
 [See AbilitySystem here](https://www.youtube.com/watch?v=JP1tGExD5oI)
