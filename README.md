@@ -11,14 +11,9 @@ My most recent Ability system from a commission
 A Folder of Combat Systems Ive made. They are all accurate but every new entry will be more accurate then the last.
 [Watch ClientSide HitBoxes](https://www.youtube.com/watch?v=KcvRt3xTKSY)
 
-[Watch ServerSideHitbox System](https://www.youtube.com/watch?v=PDd8aZSERZM)
-
 [Procedural Generation](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Procedural%20Generation)
 A room-based procedural generation system with door alignment, random exits, and room overlap prevention.
 [Watch Proceudral Generation Demo](https://www.youtube.com/watch?v=hpeCWhB7WmY)
-
-[Intermission System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Intermission%20System)
-Handles intermissions between waves, with reusable UI logic and player tracking.
 
 [Stand System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Stand%20System)
 A JoJo-style stand system with cooldowns, summoning/unsummoning animations, and modular management.
@@ -27,16 +22,9 @@ A JoJo-style stand system with cooldowns, summoning/unsummoning animations, and 
 [Wave Zombie Spawner](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Wave%20System)
 Spawns zombies in random zones based on waves. Includes XP-on-kill logic.
 
-[AR System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AR%20System)
-A working automatic assault rifle with ammo UI and shooting sounds.
-
 [Revive System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Revive%20System)
 Players can revive downed teammates and respawn them at their death spot.
 [Wath Revive System](https://www.youtube.com/watch?v=tQ_82W2stpA)
-
-[Module Loader](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Module%20Loader)
-Central loader system that allows clean, scalable system initialization.
-
 
 
 ---
