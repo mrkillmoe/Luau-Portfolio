@@ -5,18 +5,19 @@ Every system listed here was made 100% by me.
 
 [AbilitySystems](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AbilitySystem)
 My most recent Ability system from a commission
-[See AbilitySystem here](https://www.youtube.com/watch?v=JP1tGExD5oI)
+[See Ability System here](https://www.youtube.com/watch?v=JP1tGExD5oI)
 
-[CombatSystems](https://github.com/mrkillmoe/Luau-Portfolio/blob/main/CombatSystems)
+[Combat Systems](https://github.com/mrkillmoe/Luau-Portfolio/blob/main/CombatSystems)
 A Folder of Combat Systems Ive made. They are all accurate but every new entry will be more accurate then the last.
 [Watch ClientSide HitBoxes](https://www.youtube.com/watch?v=KcvRt3xTKSY)
 
 [Procedural Generation](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Procedural%20Generation)
 A room-based procedural generation system with door alignment, random exits, and room overlap prevention.
-[Watch Proceudral Generation Demo](https://www.youtube.com/watch?v=hpeCWhB7WmY)
+[Watch Procedural Generation Demo](https://www.youtube.com/watch?v=hpeCWhB7WmY)
 
-[Stand System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Stand%20System)
+[Stand System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/StandSystem)
 A JoJo-style stand system with cooldowns, summoning/unsummoning animations, and modular management.
+I cant fully disclose the scripts for this since they are in a active project.
 [Watch Stand System](https://www.youtube.com/watch?v=kPRpkHYcbh0)
 
 [Wave Zombie Spawner](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/Wave%20System)
