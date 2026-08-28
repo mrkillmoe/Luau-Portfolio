@@ -1,0 +1,65 @@
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
+
+local Trap = ServerStorage:WaitForChild("Traps"):WaitForChild("Bear Trap")
+local TrapConfig = require(ReplicatedStorage:WaitForChild("TrapConfig"))
+
+local module = {}
+
+module.Config = {
+	Cost = 100,
+	Cooldown = 10,
+	setupTimer = 1.5,
+	debrisTimer = 300,
+	Trigger_Type = "Touch",
+	Trap = Trap,
+	Damage = 100,
+	Max_Amount = 3,
+	placingRadius = TrapConfig["Bear Trap"].PlacingRadius,
+	OverlapParams = TrapConfig["Bear Trap"].Overlap,
+	SnapSoundId = "rbxassetid://9119055732", 
+	ScreamSoundId = "rbxassetid://105251993722999"
+	
+}
+
+local hitplrs = {}
+
+module.Activate = function(character, newTrap)
+	local humanoid = character:FindFirstChild("Humanoid")
+	local plr = game.Players:GetPlayerFromCharacter(character)
+	if humanoid then
+		local openTrap = newTrap.Open
+		local closeTrap = newTrap.Close
+		
+		if not openTrap or not closeTrap then
+			warn("Open or Close part not found in trap model")
+			return
+		end
+		
+		openTrap.Transparency = 1
+		openTrap.CanCollide = false
+		closeTrap.Transparency = 0
+		closeTrap.CanCollide = true
+		humanoid.Health = math.max(0, humanoid.Health - module.Config.Damage)		
+		
+		local snapSound = Instance.new("Sound")
+		snapSound.SoundId = module.Config.SnapSoundId
+		snapSound.Volume = 2
+		snapSound.Parent = closeTrap
+		snapSound:Play()
+		Debris:AddItem(snapSound, 3)
+		
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local screamSound = Instance.new("Sound")
+			screamSound.SoundId = module.Config.ScreamSoundId
+			screamSound.Volume = 1.5
+			screamSound.Parent = hrp
+			screamSound:Play()
+			Debris:AddItem(screamSound, 5)
+		end
+	end
+end
+
+return module
