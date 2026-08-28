@@ -1,9 +1,13 @@
-All of my systems are fronend and backend. I keep my experiences as organized as possible. Ive only posted some of my more complex systems or ones that i had no idea how to make when i started them.
-All of these systems were made in under 2 days each. I also have experience coding UI's but i chose not to showcase that here.
+All of my systems are front end and backend. I keep my experiences as organized as possible. Ive only posted some of my more complex systems or ones that i had no idea how to make when i started them.
+All of these systems were made in under 2 days each. I also have experience coding UI's but I chose not to showcase that here.
 
 Every system listed here was made 100% by me.
 
-[AbilitySystems](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AbilitySystem)
+[Trap System](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/TrapSystem)
+A showcase of a expandable trap system
+[See Trap System](https://www.youtube.com/watch?v=nq9mZRj-CW8).
+
+[Ability Systems](https://github.com/mrkillmoe/Luau-Portfolio/tree/main/AbilitySystem)
 My most recent Ability system from a commission
 [See Ability System here](https://www.youtube.com/watch?v=JP1tGExD5oI)
 
