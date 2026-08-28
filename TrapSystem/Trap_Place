@@ -1,0 +1,218 @@
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Traps = RS:WaitForChild("Traps")
+local PlaceEvent = RS:WaitForChild("PlaceEvent")
+local TrapConfig = require(RS:WaitForChild("TrapConfig"))
+
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local Placing = false
+local clone
+local connection
+local rotateDeg = 0
+
+local lastPlaceTime = 0
+local lastRotateTime = 0
+local PlaceCooldown
+local RotateCoolDown = 0.15
+
+local Config = {
+	trapEquipToggle = Enum.KeyCode.E,
+	trapPlace = Enum.UserInputType.MouseButton1,
+	trapRotate = Enum.KeyCode.R,
+}
+
+local cooldownFrame = player:WaitForChild("PlayerGui"):WaitForChild("PlaceCooldownUI"):WaitForChild("Frame")
+local FullWidth = cooldownFrame.Size.X.Offset
+local cooldownConnection
+
+local function StartPlaceCooldownUI(CoolDown)
+	if cooldownConnection then
+		cooldownConnection:Disconnect()
+		cooldownConnection = nil
+	end
+	local startTime = os.clock()
+	cooldownFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+	cooldownFrame.BackgroundTransparency = 0
+	cooldownFrame.Visible = true
+	cooldownFrame.Size = UDim2.new(0, FullWidth, 0, 13)
+	cooldownConnection = RunService.Heartbeat:Connect(function()
+		local progress = math.clamp((os.clock() - startTime) / CoolDown, 0, 1)
+		cooldownFrame.Size = UDim2.new(0, FullWidth * (1 - progress), 0, 13)
+		if progress >= 1 then
+			cooldownFrame.Visible = false
+			cooldownConnection:Disconnect()
+			cooldownConnection = nil
+		end
+	end)
+end
+
+local function SetGhostColor(canPlace)
+	local color = canPlace and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+	if clone:IsA("BasePart") then
+		clone.Color = color
+	else
+		for _, part in pairs(clone:GetDescendants()) do
+			if part:IsA("BasePart") or part:IsA("MeshPart") then
+				part.Color = color
+			end
+		end
+	end
+end
+
+local function RotateGhost()
+	if clone and Placing then
+		rotateDeg = rotateDeg + 45
+	end
+end
+
+local function GetOverlapConfig(trapName)
+	local cfg = TrapConfig[trapName]
+	if cfg and cfg.Overlap then
+		return cfg.Overlap
+	end
+	return {
+		FilterType = Enum.RaycastFilterType.Exclude,
+		RespectCanCollide = false,
+		OnlyCountTraps = true,
+	}
+end
+
+local function CheckOverlap(instance, excludeList, overlapConfig)
+	local params = OverlapParams.new()
+	params.FilterType = overlapConfig.FilterType or Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = excludeList
+	params.RespectCanCollide = overlapConfig.RespectCanCollide or false
+
+	local cframe, size
+	if instance:IsA("BasePart") then
+		cframe = instance.CFrame
+		size = instance.Size
+	else
+		cframe, size = instance:GetBoundingBox()
+	end
+	local overlaps = workspace:GetPartBoundsInBox(cframe, size, params)
+	
+	if overlapConfig.OnlyCountTraps == false then
+		return #overlaps > 0
+	end
+	
+	for _, part in overlaps do
+		local owner = part:FindFirstChild("Owner") or (part.Parent and part.Parent:FindFirstChild("Owner"))
+		if owner then
+			return true
+		end
+	end
+	return false
+end
+
+local function PlacingLogic()
+	Placing = true
+	local trapName = player:GetAttribute("Trap")
+	local trap = Traps:FindFirstChild(trapName)
+	if trap then
+		local trapCfg = TrapConfig[trapName] or {}
+		local overlapConfig = GetOverlapConfig(trapName)
+		local placingRadius = trapCfg.PlacingRadius or 100
+		clone = trap:Clone()
+		clone.Parent = workspace
+		if clone:IsA("Model") then
+			for _, part in pairs(clone:GetDescendants()) do
+				if part:IsA("BasePart") or part:IsA("MeshPart") then
+					part.Anchored = true
+					part.CanCollide = false
+					part.Transparency = 0.7
+				end
+			end
+		else
+			clone.CanCollide = false
+			clone.Transparency = 0.7
+			clone.Anchored = true
+		end
+		connection = RunService.RenderStepped:Connect(function()
+			local raycastParams = RaycastParams.new()
+			raycastParams.FilterDescendantsInstances = {clone, player.Character}
+			local unitRay = mouse.UnitRay
+			local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 500, raycastParams)
+			if result then
+				local halfHeight
+				if clone:IsA("BasePart") then
+					halfHeight = clone.Size.Y / 2
+				else
+					local _, size = clone:GetBoundingBox()
+					halfHeight = size.Y / 2
+				end
+				
+				local yOffset = trapCfg.PlacementYOffset or 0
+				
+				local rotation = CFrame.Angles(0, math.rad(rotateDeg), 0)
+				clone:PivotTo(CFrame.new(result.Position + Vector3.new(0, halfHeight + yOffset, 0)) * rotation)
+
+				local canPlace = false
+				local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local distance = (hrp.Position - result.Position).Magnitude
+					canPlace = distance <= placingRadius
+				end
+				
+				if canPlace and CheckOverlap(clone, {clone, player.Character}, overlapConfig) then
+					canPlace = false
+				end
+				SetGhostColor(canPlace)
+			end
+		end)
+	else
+		warn("Trap not found")
+	end
+end
+
+local function CancelPlacing()
+	if Placing then
+		Placing = false
+		rotateDeg = 0
+		if connection then connection:Disconnect() end
+		if clone then clone:Destroy() end
+	end
+end
+
+UIS.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Config.trapEquipToggle then
+		if Placing then
+			CancelPlacing()
+		else
+			PlacingLogic()
+		end
+	elseif input.KeyCode == Config.trapRotate then
+		if Placing and os.clock() - lastRotateTime >= RotateCoolDown then
+			lastRotateTime = os.clock()
+			RotateGhost()
+		end
+		
+	elseif input.UserInputType == Config.trapPlace then
+		local PlaceCooldown = TrapConfig[player:GetAttribute("Trap")].PlacementCoolDown
+		if Placing and PlaceCooldown and os.clock() - lastPlaceTime >= PlaceCooldown then
+			mouse.TargetFilter = clone
+			local target = mouse.Target
+			local hit = mouse.Hit
+			if (target:IsA("BasePart") or target:IsA("MeshPart")) and target ~= clone and hit then
+				Placing = false
+				local success = PlaceEvent:InvokeServer(target, hit, rotateDeg, player:GetAttribute("Trap"))
+
+				if success then
+					lastPlaceTime = os.clock()
+					StartPlaceCooldownUI(PlaceCooldown)
+				else 
+					warn("Event failed")
+				end
+				if connection then connection:Disconnect() end
+				clone:Destroy()
+			end
+		end
+	end
+end)
+   
