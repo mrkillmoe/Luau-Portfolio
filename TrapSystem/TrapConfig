@@ -1,0 +1,25 @@
+
+local TrapConfig = {
+	["Bear Trap"] = {
+		PlacingRadius = 10,
+		PlacementYOffset = 0.3,
+		PlacementCoolDown = 5,
+		Overlap = {
+			FilterType = Enum.RaycastFilterType.Exclude,
+			RespectCanCollide = false,
+			OnlyCountTraps = true,
+		},
+	},
+	["Trap2"] = {
+		PlacingRadius = 30,
+		PlacementYOffset = 0,
+		PlacementCoolDown = 3,
+		Overlap = {
+			FilterType = Enum.RaycastFilterType.Exclude,
+			RespectCanCollide = false,
+			OnlyCountTraps = true,
+		},
+	},
+}
+
+return TrapConfig
