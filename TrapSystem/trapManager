@@ -1,0 +1,330 @@
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DebrisService = game:GetService("Debris")
+local Teams = game:GetService("Teams")
+local Players = game:GetService("Players")
+
+local PlaceEvent = ReplicatedStorage:WaitForChild("PlaceEvent")
+local EquipEvent = ReplicatedStorage:WaitForChild("EquipEvent")
+local TrapConfig = require(ReplicatedStorage:WaitForChild("TrapConfig"))
+
+local trapFolder = ServerStorage:WaitForChild("Traps")
+local WorkspaceTraps = workspace:WaitForChild("Traps")
+local modules = {}
+
+local traps = {}
+
+
+local trapCheckInterval = 0.15
+
+local placeCooldowns = {}
+local placeCoolDown = 5
+for _, module in script:GetChildren() do
+	if module:IsA("ModuleScript") then
+		modules[module.Name] = require(module)
+	end
+end
+
+local function CheckOverlap(instance, excludeList, overlapConfig)
+	local params = OverlapParams.new()
+	params.FilterType = overlapConfig.FilterType or Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = excludeList
+	params.RespectCanCollide = overlapConfig.RespectCanCollide or false
+
+	if overlapConfig.ExtraExcludes then
+		for _, inst in ipairs(overlapConfig.ExtraExcludes) do
+			table.insert(params.FilterDescendantsInstances, inst)
+		end
+	end
+
+	local cframe, size
+	if instance:IsA("BasePart") then
+		cframe = instance.CFrame
+		size = instance.Size
+	else
+		cframe, size = instance:GetBoundingBox()
+	end
+	local overlaps = workspace:GetPartBoundsInBox(cframe, size, params)
+
+	if overlapConfig.OnlyCountTraps == false then
+		return #overlaps > 0
+	end
+
+	for _, part in overlaps do
+		local owner = part:FindFirstChild("Owner") or (part.Parent and part.Parent:FindFirstChild("Owner"))
+		if owner then
+			return true
+		end
+	end
+	return false
+end
+
+local function onPlayerAdded(player)
+	player:SetAttribute("Trap", "Bear Trap")
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+for _, player in Players:GetPlayers() do
+	onPlayerAdded(player)
+end
+
+EquipEvent.OnServerInvoke = function(player, trapId)
+	if typeof(trapId) ~= "string" then
+		return false
+	end
+
+	local trap = trapFolder:FindFirstChild(trapId)
+	if not trap then
+		warn("EquipEvent: Trap '" .. trapId .. "' not found")
+		return false
+	end
+
+	player:SetAttribute("Trap", trapId)
+	return true
+end
+
+PlaceEvent.OnServerInvoke = function(player, target, hit, rotateDeg, trapId)
+
+	local now = os.clock()
+	local lastPlace = placeCooldowns[player]
+	if lastPlace and (now - lastPlace) < placeCoolDown then
+		warn("PlaceEvent ignored. Still on countdown for "..(placeCoolDown - (now - lastPlace)).."s")
+		return false
+	end
+
+	if trapId and player:GetAttribute("Trap") == trapId and target and hit then
+		local HRP = player.Character:FindFirstChild("HumanoidRootPart")
+		if HRP then
+			
+			local trap = trapFolder:FindFirstChild(trapId)
+			if not trap then warn("Trap not found") return end
+			
+			local trapModule = modules[trapId]
+			if not trapModule then warn("Module not found") return end
+			
+			local radius = trapModule.Config.placingRadius
+			local distance = (HRP.Position - hit.Position).Magnitude
+			
+			
+			if not radius or not distance then warn("Radius or distance not found") return end
+			
+			
+			if distance <= radius then
+				local clone = trap:Clone()
+				local rotateOffset = CFrame.Angles(0, math.rad(rotateDeg),0)
+				clone.Parent = WorkspaceTraps
+				
+				if clone:IsA("Model") then
+					for _, part in pairs(clone:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.Anchored = true
+							part.CanCollide = part.Name ~= "HitBox"
+						end
+					end
+					if not clone.PrimaryPart then
+						clone.PrimaryPart = clone:FindFirstChildWhichIsA("BasePart")
+					end
+					local boundingBox = clone:GetBoundingBox()
+					local yOffset = TrapConfig[trapId] and TrapConfig[trapId].PlacementYOffset or 0
+					local offset = Vector3.new(0, boundingBox.Y/2 + yOffset, 0)
+					clone:PivotTo(CFrame.new(hit.Position + offset) * rotateOffset)
+					clone.Parent = WorkspaceTraps
+				else
+					warn("Not a model")
+					clone.Anchored = true
+					
+					local offset = Vector3.new(0,trap.Size.Y/2 ,0)
+					clone.CFrame = (CFrame.new(hit.Position + offset) * rotateOffset)
+					clone.CanCollide = true
+					clone.Parent = WorkspaceTraps
+				end
+
+			
+				local overlapConfig = trapModule.Config.OverlapParams or {}
+				if CheckOverlap(clone, {clone, player.Character}, overlapConfig) then
+					clone:Destroy()
+					warn("Overlap detected, placement blocked")
+					return false
+				end
+
+				if clone.Parent == WorkspaceTraps then
+					local newOwner = Instance.new("ObjectValue")
+					newOwner.Name = "Owner"
+					newOwner.Value = player
+					newOwner.Parent = clone
+					
+					local teamTag = Instance.new("StringValue")
+					teamTag.Name = "Team"
+					teamTag.Value = player.Team.Name
+					teamTag.Parent = clone
+					
+					local triggerType = trapModule.Config.Trigger_Type
+					local hitbox = clone:FindFirstChild("HitBox")
+					if not hitbox then
+						warn("Hitbox not found on " .. trapId)
+					end
+					
+					local setupTimer = trapModule.Config.setupTimer
+					
+					if setupTimer then
+						task.delay(setupTimer, function()
+							table.insert(traps, {
+								ref = clone,
+								triggerType = triggerType,
+								hitbox = hitbox,
+								moduleName = trapId,
+							})
+						end)
+					else
+						warn("setup timer not found")
+						table.insert(traps, {
+							ref = clone,
+							triggerType = triggerType,
+							hitbox = hitbox,
+							moduleName = trapId,
+						})
+					end
+					
+					local TrapLifeTime = trapModule.Config.TrapLifeTime
+					
+					if TrapLifeTime then
+						task.delay(TrapLifeTime, function()
+                            clone:Destroy()
+							for i, t in ipairs(traps) do
+								if t.ref == clone then
+									table.remove(traps, i)
+									break
+								end
+							end
+						end)
+					end
+				else
+					warn("TrapLifeTime not found".. clone.Name)
+				end
+
+				placeCooldowns[player] = now
+				return true
+			else
+				warn("Out of range")
+			end
+		end
+	end
+end
+
+
+local overlapParams = OverlapParams.new()
+overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function detectionLoop()
+	while true do
+		for _, trap in traps do
+			if not trap.ref or not trap.ref.Parent then
+				continue
+			end
+
+			overlapParams.FilterDescendantsInstances = { trap.ref }
+
+			if trap.triggerType == "Touch" then
+				local overlaps = workspace:GetPartsInPart(trap.hitbox, overlapParams)
+
+				for _, part in overlaps do
+					local character = part:FindFirstAncestorWhichIsA("Model")
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+					if humanoid and humanoid.Health > 0 then
+						local player = Players:GetPlayerFromCharacter(character)
+						if player then
+							local owner = trap.ref:FindFirstChild("Owner")
+							if owner and owner.Value == player then
+								continue
+							end
+
+							local teamTag = trap.ref:FindFirstChild("Team")
+							if teamTag and player.Team and teamTag.Value == player.Team.Name then
+								continue
+							end
+						end
+
+						local module = modules[trap.moduleName]
+						if module then
+							module.Activate(character, trap.ref)
+							
+							local destroyAfterUse = module.Config.destroyAfterUse
+							if destroyAfterUse then
+							
+							local debrisTimer = module.Config.debrisTimer or 3
+							DebrisService:AddItem(trap.ref, debrisTimer)
+							end
+							
+							table.remove(traps, table.find(traps, trap))
+						end
+						break
+					end
+				end
+
+			elseif trap.triggerType == "AOE" then
+				local module = modules[trap.moduleName]
+
+				if not module then return warn("Module not found for "..trap.ref.Name) end
+
+				local aoeCooldown = module.Config.ActivationCooldown or 1
+				if trap.lastActivated and (os.clock() - trap.lastActivated) < aoeCooldown then
+					continue
+				end
+
+				local center = trap.ref:GetPivot().Position
+				local radius = module.Config.DetectRange
+				
+				if not radius then return warn("Radius not found for "..trap.ref.Name) end
+				
+				for _, player in Players:GetPlayers() do
+					local char = player.Character
+					local hrp = char and char:FindFirstChild("HumanoidRootPart")
+					local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+					if hrp and humanoid and humanoid.Health > 0 then
+						local owner = trap.ref:FindFirstChild("Owner")
+						if owner and owner.Value == player then
+							continue
+						end
+
+						local teamTag = trap.ref:FindFirstChild("Team")
+						if teamTag and player.Team and teamTag.Value == player.Team.Name then
+							continue
+						end
+
+						local distance = (hrp.Position - center).Magnitude
+
+						if distance <= radius then
+							trap.lastActivated = os.clock()
+							module.Activate(char, trap.ref)
+							break
+						end
+					end
+				end
+
+			elseif trap.triggerType == "Timed" then
+				if not trap.lastFired then
+					trap.lastFired = os.clock()
+				end
+
+				local interval = trap.ref:GetAttribute("Interval") or 5
+				local elapsed = os.clock() - trap.lastFired
+
+				if elapsed >= interval then
+					trap.lastFired = os.clock()
+
+					local module = modules[trap.moduleName]
+					if module then
+						module.Activate()
+					end
+				end
+			end
+		end
+
+		task.wait(trapCheckInterval)
+	end
+end
+
+task.spawn(detectionLoop)
