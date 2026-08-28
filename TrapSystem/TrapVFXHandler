@@ -1,0 +1,36 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local TrapVFXRemote = ReplicatedStorage:WaitForChild("TrapVFX")
+local VFXFolder = ReplicatedStorage:WaitForChild("VFX")
+
+TrapVFXRemote.OnClientEvent:Connect(function(character, apply)
+	if not character or not character.Parent then return end
+
+	if apply then
+
+		local existing = character:FindFirstChild("IceBlockVFX")
+		if existing then
+			existing:Destroy()
+		end
+
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		local template = VFXFolder:FindFirstChild("IceBlock")
+		if not template then return end
+
+		local effect = template:Clone()
+		effect.Name = "IceBlockVFX"
+		effect.Anchored = true
+		effect.CanCollide = false
+
+		effect.CFrame = CFrame.new(hrp.Position)
+		effect.Parent = character
+
+	elseif apply == false then
+		local effect = character:FindFirstChild("IceBlockVFX")
+		if effect then
+			effect:Destroy()
+		end
+	end
+end)
