@@ -1,0 +1,95 @@
+local RS = game:GetService("ReplicatedStorage")
+local trapFolders = RS:WaitForChild("Traps")
+local EquipEvent = RS:WaitForChild("EquipEvent")
+
+local Gui = script.Parent
+local Frame = Gui:WaitForChild("Frame")
+local TrapsPanel = Frame:WaitForChild("TrapsPanel")
+local open = Frame:WaitForChild("OpenButton")
+local close = Frame:WaitForChild("CloseButton")
+
+local EquipUI = script.Parent.Parent:WaitForChild("EquipUI")
+
+local previousTrap = nil
+local unequipColor = Color3.fromRGB(89, 89, 89)
+local equipColor = Color3.fromRGB(100, 255, 100)
+
+local EQUIP_COOLDOWN = 5
+local lastEquipTime = 0
+
+local trapTemplateButton = script:WaitForChild("Trap_Template")
+
+TrapsPanel.Visible = false
+close.Visible = false
+
+local Traps = {}
+
+for _, i in pairs(trapFolders:GetChildren()) do
+	table.insert(Traps, i.Name)
+end
+
+open.MouseButton1Click:Connect(function()
+	TrapsPanel.Visible = not TrapsPanel.Visible
+	open.Visible = not open.Visible
+	close.Visible = not close.Visible
+end)
+
+close.MouseButton1Click:Connect(function()
+	TrapsPanel.Visible = not TrapsPanel.Visible
+	open.Visible = not open.Visible
+	close.Visible = not close.Visible
+end)
+
+local function EquipUIHandler(now, lastEquipTime, CoolDown)
+	if not now and lastEquipTime then
+		warn("TimeLeft not found")
+		return
+	end
+	
+	EquipUI.Enabled = true
+	
+	while now - lastEquipTime < EQUIP_COOLDOWN do
+	
+		local remaining = CoolDown - (now - lastEquipTime)
+		EquipUI.Frame.TextLabel.Text = "Time Left: " .. math.floor(remaining) .. "s"
+		task.wait(1)
+		now = os.clock()
+	
+	end
+	
+	EquipUI.Enabled = false
+	
+end
+
+for _, trap in pairs(Traps) do
+	local newTeplate = trapTemplateButton:Clone()
+	newTeplate.Parent = TrapsPanel
+	newTeplate.Visible = true
+	newTeplate.Text = trap
+	newTeplate.MouseButton1Click:Connect(function()
+		local now = os.clock()
+		if now - lastEquipTime < EQUIP_COOLDOWN then
+			EquipUIHandler(now, lastEquipTime, EQUIP_COOLDOWN)
+			warn("Equip on Cooldown for "..(EQUIP_COOLDOWN - (now - lastEquipTime))) return
+		end
+
+		local success = EquipEvent:InvokeServer(trap)
+		if not success then
+			return
+		end
+
+		lastEquipTime = now
+
+		if previousTrap then
+			previousTrap.BackgroundColor3 = unequipColor
+			previousTrap.BackgroundTransparency = 1
+			newTeplate.BackgroundColor3 = equipColor
+			newTeplate.BackgroundTransparency = 0.5
+			previousTrap = newTeplate
+		else
+			previousTrap = newTeplate
+			newTeplate.BackgroundColor3 = equipColor
+			newTeplate.BackgroundTransparency = 0.5
+		end
+	end)
+end
