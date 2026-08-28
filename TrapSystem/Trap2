@@ -1,0 +1,81 @@
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
+
+local Trap = ServerStorage:WaitForChild("Traps"):WaitForChild("Trap2")
+local TrapConfig = require(ReplicatedStorage:WaitForChild("TrapConfig"))
+local TrapVFXRemote = ReplicatedStorage:WaitForChild("TrapVFX")
+
+local module = {}
+
+local effectedEnemies = {}
+local lastActivated = {}
+
+module.Config = {
+	Cost = 100,
+	Cooldown = 10,
+	DetectRange = 40,
+	TrapLifeTime = 10,
+	Trigger_Type = "AOE",
+	Trap = Trap,
+	Utility = "Freeze",
+	UtilityDuration = 20,
+	UtilityCoolDown = 10,
+	ActivationCooldown = 1,
+	Max_Amount = 3,
+	placingRadius = TrapConfig["Trap2"].PlacingRadius,
+	OverlapParams = TrapConfig["Trap2"].Overlap,
+	VFXSoundId = "rbxassetid://9125611312",
+}
+
+module.Activate = function(character, newTrap)
+	local now = os.clock()
+	if newTrap and lastActivated[newTrap] and (now - lastActivated[newTrap]) < module.Config.ActivationCooldown then
+		return
+	end
+
+	local humanoid = character:FindFirstChild("Humanoid")
+	local plr = game.Players:GetPlayerFromCharacter(character)
+	if humanoid then
+		if plr and not effectedEnemies[plr.UserId] then
+			lastActivated[newTrap] = now
+			effectedEnemies[plr.UserId] = true
+			for _, part in pairs(character:GetChildren()) do
+				if part:IsA("BasePart") or part:IsA("MeshPart") then
+					part.Anchored = true
+				end
+			end
+			module.ApplyVFX(character, true)
+			
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local freezeSound = Instance.new("Sound")
+				freezeSound.SoundId = module.Config.VFXSoundId
+				freezeSound.Volume = 1.5
+				freezeSound.Parent = hrp
+				freezeSound:Play()
+				Debris:AddItem(freezeSound, 8)
+			end
+
+			task.delay(module.Config.UtilityDuration, function()
+				for _, part in pairs(character:GetChildren()) do
+					if part:IsA("BasePart") or part:IsA("MeshPart") then
+						part.Anchored = false
+					end
+				end
+				module.ApplyVFX(character, false)
+
+				task.delay(module.Config.UtilityCoolDown, function()
+					effectedEnemies[plr.UserId] = nil
+				end)
+			end)
+		end
+	end
+end
+
+module.ApplyVFX = function(character, apply: boolean)
+
+	TrapVFXRemote:FireAllClients(character, apply)
+end
+
+return module
